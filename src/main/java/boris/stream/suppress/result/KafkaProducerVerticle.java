@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Random;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import io.reactivex.Single;
+import io.reactivex.schedulers.Schedulers;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -53,6 +54,7 @@ public class KafkaProducerVerticle extends AbstractVerticle {
           .flatMap(v -> Single.just(new JsonObject().put(CATEGORY, category).put(VALUE, v)))
           .flatMap(json -> Single.just(KafkaProducerRecord.<String, String>create(TOPIC,
               "k" + random.nextInt(), json.toString())))
+          .subscribeOn(Schedulers.newThread())
           .subscribe(record -> {
             log.info(record.value());
             producer.send(record, done -> {
