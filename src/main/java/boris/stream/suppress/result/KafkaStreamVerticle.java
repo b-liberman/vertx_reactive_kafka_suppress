@@ -25,8 +25,6 @@ public class KafkaStreamVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    final Grouped<String, String> grouped = Grouped.with(Serdes.String(), Serdes.String());
-
     Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
 
       StreamsBuilder builder = new StreamsBuilder();
@@ -38,10 +36,10 @@ public class KafkaStreamVerticle extends AbstractVerticle {
           .selectKey((k, v) -> v.getString(KafkaProducerVerticle.CATEGORY))
           .flatMapValues(v -> List.<String>of(v.toString()))
           .groupByKey(Grouped.with(Serdes.String(), Serdes.String()))
-          .windowedBy(TimeWindows.of(Duration.ofSeconds(5)).grace(Duration.ofSeconds(20)))
+          .windowedBy(TimeWindows.of(Duration.ofSeconds(5)).grace(Duration.ofMillis(1)))
           .count()
           .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded())).toStream()
-          .foreach((k, v) -> log.info("{}:{}", k, v));
+          .foreach((k, v) -> log.info("{}: {} - {}: {}", k.key(), k.window().start(), k.window().end(), v));
 
       KafkaStreams streams = new KafkaStreams(builder.build(), config);
       streams.cleanUp();
@@ -62,7 +60,8 @@ public class KafkaStreamVerticle extends AbstractVerticle {
         Serdes.String().getClass().getName());
     streamsConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     streamsConfiguration.put(StreamsConfig.STATE_DIR_CONFIG, "/tmp/kafka-streams");
-    streamsConfiguration.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
+//    streamsConfiguration.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
+    streamsConfiguration.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L);
     return streamsConfiguration;
   }
 }
