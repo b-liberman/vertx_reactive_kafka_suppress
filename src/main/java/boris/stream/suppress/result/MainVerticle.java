@@ -18,15 +18,15 @@ public class MainVerticle extends AbstractVerticle {
             new DeploymentOptions().setConfig(new JsonObject()
                 .put(KafkaProducerVerticle.CATEGORY, "one").put(KafkaProducerVerticle.PERIOD, 2000))
                 .setInstances(2)))
-//        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-//            new DeploymentOptions().setConfig(new JsonObject()
-//                .put(KafkaProducerVerticle.CATEGORY, "two").put(KafkaProducerVerticle.PERIOD, 600))
-//                .setInstances(1)))
-//        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-//            new DeploymentOptions()
-//                .setConfig(new JsonObject().put(KafkaProducerVerticle.CATEGORY, "three")
-//                    .put(KafkaProducerVerticle.PERIOD, 400))
-//                .setInstances(1)))
+        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+            new DeploymentOptions().setConfig(new JsonObject()
+                .put(KafkaProducerVerticle.CATEGORY, "two").put(KafkaProducerVerticle.PERIOD, 600))
+                .setInstances(1)))
+        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+            new DeploymentOptions()
+                .setConfig(new JsonObject().put(KafkaProducerVerticle.CATEGORY, "three")
+                    .put(KafkaProducerVerticle.PERIOD, 400))
+                .setInstances(1)))
         .subscribe(s -> super.start(startFuture));
   }
 }

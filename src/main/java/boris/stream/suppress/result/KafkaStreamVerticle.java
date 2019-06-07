@@ -30,8 +30,7 @@ public class KafkaStreamVerticle extends AbstractVerticle {
       StreamsBuilder builder = new StreamsBuilder();
 
       builder
-          .<String, String>stream(KafkaProducerVerticle.TOPIC,
-              Consumed.with(Serdes.String(), Serdes.String()))
+          .<String, String>stream(KafkaProducerVerticle.TOPIC)
           .flatMapValues((k, v) -> List.<JsonObject>of(new JsonObject(v).put("origKey", k)))
           .selectKey((k, v) -> v.getString(KafkaProducerVerticle.CATEGORY))
           .flatMapValues(v -> List.<String>of(v.toString()))
