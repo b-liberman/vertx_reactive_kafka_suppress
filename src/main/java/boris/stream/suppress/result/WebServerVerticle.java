@@ -1,4 +1,4 @@
-package boris.stream.final_.result;
+package boris.stream.suppress.result;
 
 import io.vertx.core.Future;
 import io.vertx.reactivex.core.AbstractVerticle;

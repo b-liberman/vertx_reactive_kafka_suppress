@@ -24,7 +24,7 @@ application {
 
 sourceCompatibility = '11'
 
-def mainVerticleName = 'boris.stream.final_.result.MainVerticle'
+def mainVerticleName = 'boris.stream.suppress.result.MainVerticle'
 def watchForChange = 'src/**/*'
 def doOnChange = './gradlew classes'
 

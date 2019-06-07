@@ -1,4 +1,4 @@
-package boris.stream.final_.result;
+package boris.stream.suppress.result;
 
 import java.util.HashMap;
 import java.util.Map;

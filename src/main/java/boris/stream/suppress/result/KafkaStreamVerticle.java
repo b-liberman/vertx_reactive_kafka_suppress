@@ -1,15 +1,17 @@
-package boris.stream.final_.result;
+package boris.stream.suppress.result;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.Suppressed;
+import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import io.reactivex.Single;
 import io.vertx.core.Future;
@@ -23,22 +25,29 @@ public class KafkaStreamVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
-      StreamsBuilder builder = new StreamsBuilder();
-      KStream<String, String> input = builder.stream(KafkaProducerVerticle.TOPIC);
+    final Grouped<String, String> grouped = Grouped.with(Serdes.String(), Serdes.String());
 
-      // input.foreach((k, v) -> log.info("{}:{}", k, v));
-      input.flatMapValues((k, v) -> List.<JsonObject>of(new JsonObject(v).put("origKey", k)))
-          .selectKey((k, v) -> v.getValue(KafkaProducerVerticle.CATEGORY))
-          .flatMapValues(v -> List.<String>of(v.toString())).groupByKey()
-          .windowedBy(TimeWindows.of(Duration.ofSeconds(5))).count().toStream()
+    Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
+
+      StreamsBuilder builder = new StreamsBuilder();
+
+      builder
+          .<String, String>stream(KafkaProducerVerticle.TOPIC,
+              Consumed.with(Serdes.String(), Serdes.String()))
+          .flatMapValues((k, v) -> List.<JsonObject>of(new JsonObject(v).put("origKey", k)))
+          .selectKey((k, v) -> v.getString(KafkaProducerVerticle.CATEGORY))
+          .flatMapValues(v -> List.<String>of(v.toString()))
+          .groupByKey(Grouped.with(Serdes.String(), Serdes.String()))
+          .windowedBy(TimeWindows.of(Duration.ofSeconds(5)).grace(Duration.ofSeconds(20)))
+          .count()
+          .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded())).toStream()
           .foreach((k, v) -> log.info("{}:{}", k, v));
 
       KafkaStreams streams = new KafkaStreams(builder.build(), config);
       streams.cleanUp();
       streams.start();
-      startFuture.complete();
       Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+      startFuture.complete();
     });
   }
 
