@@ -27,7 +27,7 @@ public class KafkaStreamVerticle extends AbstractVerticle {
 
     Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
 
-      StreamsBuilder builder = new StreamsBuilder();
+      final StreamsBuilder builder = new StreamsBuilder();
 
       builder
           .<String, String>stream(KafkaProducerVerticle.TOPIC)
@@ -40,10 +40,24 @@ public class KafkaStreamVerticle extends AbstractVerticle {
           .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded())).toStream()
           .foreach((k, v) -> log.info("{}: {} - {}: {}", k.key(), k.window().start(), k.window().end(), v));
 
-      KafkaStreams streams = new KafkaStreams(builder.build(), config);
+      final KafkaStreams streams = new KafkaStreams(builder.build(), config);
       streams.cleanUp();
       streams.start();
       Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+      new Thread(() -> {
+        try {
+          Thread.sleep(12_000);
+          log.info("RESTARTING!!");
+          streams.close();
+          Thread.sleep(1_000);
+          KafkaStreams streams2 = new KafkaStreams(builder.build(), config);
+          streams2.cleanUp();
+          streams2.start();
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }).start();
       startFuture.complete();
     });
   }
