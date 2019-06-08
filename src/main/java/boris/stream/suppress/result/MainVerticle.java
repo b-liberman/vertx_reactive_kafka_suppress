@@ -4,6 +4,7 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.core.AbstractVerticle;
+import lombok.NonNull;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -11,20 +12,23 @@ public class MainVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) throws Exception {
 
     vertx.rxDeployVerticle(WebServerVerticle.class.getName())
-        .flatMap(l -> vertx.rxDeployVerticle(KafkaStreamVerticle.class.getName()))
-        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-            new DeploymentOptions().setConfig(new JsonObject()
-                .put(KafkaProducerVerticle.CATEGORY, "one").put(KafkaProducerVerticle.PERIOD, 2000))
-                .setInstances(2)))
-        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-            new DeploymentOptions().setConfig(new JsonObject()
-                .put(KafkaProducerVerticle.CATEGORY, "two").put(KafkaProducerVerticle.PERIOD, 600))
-                .setInstances(1)))
-        .flatMap(l -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-            new DeploymentOptions()
-                .setConfig(new JsonObject().put(KafkaProducerVerticle.CATEGORY, "three")
-                    .put(KafkaProducerVerticle.PERIOD, 400))
-                .setInstances(1)))
+        .flatMap(wsvl -> vertx.rxDeployVerticle(KafkaStreamVerticle.class.getName()))
+        .flatMap(ksvl -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+            buildDeploymentOptions("one", 410, 1)))
+//        .flatMap(pvOnel -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+//            buildDeploymentOptions("two", 3000, 1)))
+//        .flatMap(pvTwol -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+//            buildDeploymentOptions("three", 4000, 1)))
+        // dummy category to forcefully close the suppress time windows
+      .flatMap(pvTwol -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
+      buildDeploymentOptions(KafkaProducerVerticle.DUMMY_CATEGORY, 4000, 1)))
         .subscribe(s -> super.start(startFuture));
+  }
+
+  private DeploymentOptions buildDeploymentOptions(@NonNull String category,
+      @NonNull Integer period, @NonNull Integer instances) {
+    return new DeploymentOptions().setConfig(new JsonObject()
+        .put(KafkaProducerVerticle.CATEGORY, category).put(KafkaProducerVerticle.PERIOD, period))
+        .setInstances(instances);
   }
 }

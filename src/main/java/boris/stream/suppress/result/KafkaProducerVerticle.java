@@ -1,5 +1,6 @@
 package boris.stream.suppress.result;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -23,8 +24,12 @@ public class KafkaProducerVerticle extends AbstractVerticle {
   static final String VALUE = "value";
   static final String CATEGORY = "category";
   static final String PERIOD = "period";
+
+  static final String DUMMY_CATEGORY = "dummy";
+
   private String category;
   private Integer period;
+  private Integer numberOfRecordsSend = 0;
 
   @Override
   public void init(Vertx vertx, Context context) {
@@ -41,6 +46,7 @@ public class KafkaProducerVerticle extends AbstractVerticle {
         .flatMap(config -> Single.just(KafkaProducer.<String, String>create(vertx, config)))
         .subscribe(producer -> {
           produceRecords(producer, category, period);
+          log.info("producer deployed: {} - {}", category, period);
           super.start(startFuture);
         });
   }
@@ -49,14 +55,18 @@ public class KafkaProducerVerticle extends AbstractVerticle {
       @NonNull Integer period) {
     final Random random = new Random();
     vertx.setPeriodic(period, l -> {
+      if (!DUMMY_CATEGORY.equals(category) && numberOfRecordsSend++ > 35
+          && numberOfRecordsSend < 65) {
+        log.info("SKIPPING");
+        return;
+      }
       String value = "message_" + random.nextInt();
       Single.just(value)
           .flatMap(v -> Single.just(new JsonObject().put(CATEGORY, category).put(VALUE, v)))
           .flatMap(json -> Single.just(KafkaProducerRecord.<String, String>create(TOPIC,
               "k" + random.nextInt(), json.toString())))
-          .subscribeOn(Schedulers.newThread())
-          .subscribe(record -> {
-            log.info(record.value());
+          .subscribeOn(Schedulers.newThread()).subscribe(record -> {
+            log.info("{} - {}", record.value(), Instant.now().toEpochMilli());
             producer.send(record, done -> {
               if (done.succeeded()) {
                 log.debug("success {}", done.result().getOffset());
