@@ -1,7 +1,6 @@
 package boris.stream.suppress.result;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -55,8 +54,9 @@ public class KafkaProducerVerticle extends AbstractVerticle {
       @NonNull Integer period) {
     final Random random = new Random();
     vertx.setPeriodic(period, l -> {
-      if (!DUMMY_CATEGORY.equals(category) && numberOfRecordsSend++ > 35
-          && numberOfRecordsSend < 65) {
+      if (!DUMMY_CATEGORY.equals(category)
+          && ((numberOfRecordsSend++ > 35 && numberOfRecordsSend < 67)
+              || (numberOfRecordsSend++ > 71 && numberOfRecordsSend < 110))) {
         log.info("SKIPPING");
         return;
       }
@@ -79,13 +79,12 @@ public class KafkaProducerVerticle extends AbstractVerticle {
   }
 
   private Map<String, String> getProducerProperties() {
-    Map<String, String> config = new HashMap<>();
-    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-        "org.apache.kafka.common.serialization.StringSerializer");
-    config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-        org.apache.kafka.common.serialization.StringSerializer.class.getName());
-    config.put(ProducerConfig.ACKS_CONFIG, "1");
-    return config;
+
+    return Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
+        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+        "org.apache.kafka.common.serialization.StringSerializer",
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+        org.apache.kafka.common.serialization.StringSerializer.class.getName(),
+        ProducerConfig.ACKS_CONFIG, "1");
   }
 }

@@ -2,6 +2,7 @@ package boris.stream.suppress.result;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
@@ -12,6 +13,7 @@ import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
 import org.apache.kafka.streams.kstream.TimeWindows;
+import io.reactivex.Flowable;
 import io.reactivex.Single;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
@@ -36,13 +38,16 @@ public class KafkaStreamVerticle extends AbstractVerticle {
           .selectKey((k, v) -> v.getString(KafkaProducerVerticle.CATEGORY))
           .flatMapValues(v -> List.<String>of(v.toString()))
           .groupByKey(Grouped.with(Serdes.String(), Serdes.String()))
-          .windowedBy(TimeWindows.of(Duration.ofSeconds(5)).grace(Duration.ZERO)).count()
-          .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded())).toStream().foreach((k,
-              v) -> log.info("{}: {} - {}: {}", k.key(), k.window().start(), k.window().end(), v));
+          .windowedBy(TimeWindows.of(Duration.ofSeconds(4)).grace(Duration.ZERO)).count()
+          // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded())).toStream().foreach((k,
+          .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(4), BufferConfig.unbounded()))
+          // convert to stream
+          .toStream().foreach((k, v) -> log.info("********* {}: {} - {}: {}", k.key(),
+              k.window().start(), k.window().end(), v));
 
       streams = buildAndStartsNewStreamsInstance(config, builder);
       Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
-      restartStreamsPeriodicalls(config, builder, 60_000L);
+      restartStreamsPeriodicaly(config, builder, 227_000L);
       log.info("consumer deployed");
       startFuture.complete();
     });
@@ -56,7 +61,7 @@ public class KafkaStreamVerticle extends AbstractVerticle {
     return streams;
   }
 
-  private void restartStreamsPeriodicalls(Properties config, final StreamsBuilder builder,
+  private void restartStreamsPeriodicaly(Properties config, final StreamsBuilder builder,
       @NonNull Long period) {
     vertx.setPeriodic(period, l -> {
       log.info("restarting streams!!");
@@ -66,18 +71,18 @@ public class KafkaStreamVerticle extends AbstractVerticle {
   }
 
   private Properties getStreamConfiguration() {
-    final Properties streamsConfiguration = new Properties();
-    streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, "suppress-example");
-    streamsConfiguration.put(StreamsConfig.CLIENT_ID_CONFIG, "suppress-client");
-    streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    streamsConfiguration.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
-        Serdes.String().getClass().getName());
-    streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
-        Serdes.String().getClass().getName());
-    streamsConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-    streamsConfiguration.put(StreamsConfig.STATE_DIR_CONFIG, "/tmp/kafka-streams");
-    streamsConfiguration.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10);
-    streamsConfiguration.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L);
-    return streamsConfiguration;
+
+    return Flowable
+        .fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "suppress-example",
+            StreamsConfig.CLIENT_ID_CONFIG, "suppress-client",
+            StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
+            StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
+            StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
+            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest", StreamsConfig.STATE_DIR_CONFIG,
+            "/tmp/kafka-streams", StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10,
+            StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L))
+        .buffer(2)
+        .collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1)))
+        .blockingGet();
   }
 }
