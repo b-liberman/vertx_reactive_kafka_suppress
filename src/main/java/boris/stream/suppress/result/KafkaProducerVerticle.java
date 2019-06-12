@@ -24,8 +24,6 @@ public class KafkaProducerVerticle extends AbstractVerticle {
   static final String CATEGORY = "category";
   static final String PERIOD = "period";
 
-  static final String DUMMY_CATEGORY = "dummy";
-
   private String category;
   private Integer period;
   private Integer numberOfRecordsSend = 0;
@@ -54,9 +52,8 @@ public class KafkaProducerVerticle extends AbstractVerticle {
       @NonNull Integer period) {
     final Random random = new Random();
     vertx.setPeriodic(period, l -> {
-      if (!DUMMY_CATEGORY.equals(category)
-          && ((numberOfRecordsSend++ > 35 && numberOfRecordsSend < 67)
-              || (numberOfRecordsSend++ > 71 && numberOfRecordsSend < 110))) {
+      if ((numberOfRecordsSend++ > 35 && numberOfRecordsSend < 67)
+          || (numberOfRecordsSend++ > 71 && numberOfRecordsSend < 110)) {
         log.info("SKIPPING");
         return;
       }
