@@ -95,6 +95,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
 class MyTransformer implements Transformer<String, String, KeyValue<String, String>> {
 
     private KeyValueStore<String, String> store;
+    private Random random = new Random();
 
     @Override
     public void init(ProcessorContext context) {
@@ -113,8 +114,7 @@ class MyTransformer implements Transformer<String, String, KeyValue<String, Stri
             }
             return new KeyValue<String, String>("doomedk", "doomedv");
         } else if (size % 3 == 0) {
-            var r = new Random().nextDouble();
-            if (r < 0.4) {
+            if (random.nextDouble() < 0.25) {
                 log.info("throwing exception");
                 throw new IllegalStateException("exc");
             }
