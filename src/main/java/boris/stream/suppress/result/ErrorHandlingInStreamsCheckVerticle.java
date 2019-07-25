@@ -12,7 +12,6 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
@@ -31,13 +30,11 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
 
     private KafkaStreams streams;
 
-    private StreamsBuilder builder;
-
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
         Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
-            builder = initializeBuilder();
+            var builder = initializeBuilder();
             streams = buildAndStartsNewStreamsInstance(config, builder);
             Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
             log.info("consumer deployed");
