@@ -14,3 +14,20 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 /.classpath
 /.project
+bin/test/boris/stream/final_/result/TestMainVerticle.class
+.settings/org.eclipse.buildship.core.prefs
+.settings/org.eclipse.jdt.core.prefs
+bin/main/logback.xml
+bin/main/boris/stream/suppress/result/KafkaProducerVerticle.class
+bin/main/boris/stream/suppress/result/KafkaStreamVerticle.class
+bin/main/boris/stream/suppress/result/KafkaValueTransformWithPunctuatorVerticle.class
+bin/main/boris/stream/suppress/result/KafkaValueTransformWithPunctuatorVerticle$1.class
+bin/main/boris/stream/suppress/result/KafkaValueTransformWithPunctuatorVerticle$1$1.class
+bin/main/boris/stream/suppress/result/MainVerticle.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaFlowableVerticle.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaFlowableVerticle$ErrorCluster.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaFlowableVerticle$ErrorCluster$ErrorClusterBuilder.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaVertxPeriodical.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaVertxPeriodical$ErrorCluster.class
+bin/main/boris/stream/suppress/result/RxJavaKafkaVertxPeriodical$ErrorCluster$ErrorClusterBuilder.class
+bin/main/boris/stream/suppress/result/WebServerVerticle.class
