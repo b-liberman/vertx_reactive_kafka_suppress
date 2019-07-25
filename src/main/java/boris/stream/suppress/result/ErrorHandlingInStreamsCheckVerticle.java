@@ -46,7 +46,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
     }
 
     private StreamsBuilder initializeBuilder() {
-        StreamsBuilder builder = new StreamsBuilder();
+        var builder = new StreamsBuilder();
         StoreBuilder<KeyValueStore<String, String>> keyValueStoreBuilder = Stores.keyValueStoreBuilder(
                 Stores.persistentKeyValueStore(MY_TRANSFORM_STATE), Serdes.String(), Serdes.String());
 
@@ -59,7 +59,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
     }
 
     private KafkaStreams buildAndStartsNewStreamsInstance(Properties config, final StreamsBuilder builder) {
-        KafkaStreams streams = new KafkaStreams(builder.build(), config);
+        var streams = new KafkaStreams(builder.build(), config);
         streams.setUncaughtExceptionHandler((thread, e) -> {
             log.info("cought exception {}", e.getMessage());
             this.streams.cleanUp();
@@ -105,9 +105,9 @@ class MyTransformer implements Transformer<String, String, KeyValue<String, Stri
     @Override
     public KeyValue<String, String> transform(String key, String value) {
         store.put(key, value);
-        long size = store.approximateNumEntries();
+        var size = store.approximateNumEntries();
         if (size % 10 == 0) {
-            KeyValueIterator<String, String> iterator = store.all();
+            var iterator = store.all();
             while (iterator.hasNext()) {
                 store.delete(iterator.next().key);
             }
