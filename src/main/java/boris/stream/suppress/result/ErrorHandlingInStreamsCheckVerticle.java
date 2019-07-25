@@ -58,7 +58,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
     private KafkaStreams buildAndStartsNewStreamsInstance(Properties config, final StreamsBuilder builder) {
         var streams = new KafkaStreams(builder.build(), config);
         streams.setUncaughtExceptionHandler((thread, e) -> {
-            log.info("cought exception {}", e.getMessage());
+            log.info("caught exception {}", e.getMessage());
             this.streams.cleanUp();
             log.info("restarting");
             log.info("starting new streams app");
