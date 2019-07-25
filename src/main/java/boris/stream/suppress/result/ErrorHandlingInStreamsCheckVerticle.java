@@ -35,7 +35,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
 
         Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
             var builder = initializeBuilder();
-            streams = buildAndStartsNewStreamsInstance(config, builder);
+            streams = buildAndStartNewStreamsInstance(config, builder);
             Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
             log.info("consumer deployed");
             startFuture.complete();
@@ -55,7 +55,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
         return builder;
     }
 
-    private KafkaStreams buildAndStartsNewStreamsInstance(Properties config, final StreamsBuilder builder) {
+    private KafkaStreams buildAndStartNewStreamsInstance(Properties config, final StreamsBuilder builder) {
         var streams = new KafkaStreams(builder.build(), config);
         streams.setUncaughtExceptionHandler((thread, e) -> {
             log.info("caught exception {}", e.getMessage());
@@ -63,7 +63,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
             log.info("restarting");
             log.info("starting new streams app");
             try {
-                this.streams = buildAndStartsNewStreamsInstance(config, builder);
+                this.streams = buildAndStartNewStreamsInstance(config, builder);
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
