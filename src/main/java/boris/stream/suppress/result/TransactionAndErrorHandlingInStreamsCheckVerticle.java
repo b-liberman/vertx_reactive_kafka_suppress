@@ -32,8 +32,6 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
 
     static final String MY_ERROR_STATE = "myErrorState";
 
-    private KafkaStreams streams;
-
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
@@ -95,10 +93,10 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     }
 
     private KafkaStreams buildAndStartNewStreamsInstance(Properties config, final StreamsBuilder builder) {
-        var streams = new KafkaStreams(builder.build(), config);
+        final var streams = new KafkaStreams(builder.build(), config);
         streams.setUncaughtExceptionHandler((thread, e) -> {
             log.info("caught exception {}", e.getMessage());
-            this.streams.cleanUp();
+            streams.cleanUp();
             log.info("EXITING");
         });
         streams.cleanUp();
@@ -133,29 +131,23 @@ class MyProcessorSupplier implements ProcessorSupplier<String, Tuple2<String, Tr
     public Processor<String, Tuple2<String, Try<InvResult>>> get() {
         return new Processor<String, Tuple2<String, Try<InvResult>>>() {
 
-            private ProcessorContext context;
             private KeyValueStore<String, String> store;
 
             @Override
             public void init(ProcessorContext context) {
-                this.context = context;
                 this.store = (KeyValueStore<String, String>) context
                         .getStateStore(TransactionAndErrorHandlingInStreamsCheckVerticle.MY_ERROR_STATE);
             }
 
             @Override
             public void process(String key, Tuple2<String, Try<InvResult>> t2) {
-                // context.headers().add("exception_header",
-                // t2._2.getCause().getMessage().getBytes());
                 log.info("storing entry in the error store - {} : {}", key, t2._1);
                 // to do: store the header. need serde for the store... or just JSON?
                 store.put(key, t2._1);
             }
 
             @Override
-            public void close() {
-                // can access this.state
-            }
+            public void close() {}
         };
     }
 }
