@@ -11,15 +11,16 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    vertx.rxDeployVerticle(ErrorHandlingInStreamsCheckVerticle.class.getName())
+    vertx.rxDeployVerticle(TransactionAndErrorHandlingInStreamsCheckVerticle.class.getName())
         // .flatMap(wsvl -> vertx.rxDeployVerticle(KafkaStreamVerticle.class.getName()))
         // .flatMap(wsvl ->
         // vertx.rxDeployVerticle(RxJavaKafkaVertxPeriodical.class.getName()))
         // .flatMap(wsvl ->
         // vertx.rxDeployVerticle(RxJavaKafkaFlowableVerticle.class.getName()))
 
+        .flatMap(ksvl -> vertx.rxDeployVerticle(AdminClientVerticle.class.getName()))
         .flatMap(ksvl -> vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
-            buildDeploymentOptions("one", 500, 1)))
+            buildDeploymentOptions("one", 7000, 1)))
         // .flatMap(pvOnel ->
         // vertx.rxDeployVerticle(KafkaProducerVerticle.class.getName(),
         // buildDeploymentOptions("two", 1100, 1)))
