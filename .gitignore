@@ -14,6 +14,7 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 /.classpath
 /.project
+bin/*
 bin/test/boris/stream/final_/result/TestMainVerticle.class
 .settings/org.eclipse.buildship.core.prefs
 .settings/org.eclipse.jdt.core.prefs

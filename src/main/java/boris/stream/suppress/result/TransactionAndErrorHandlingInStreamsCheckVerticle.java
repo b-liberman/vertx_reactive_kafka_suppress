@@ -7,11 +7,9 @@ import java.util.Random;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -24,7 +22,6 @@ import io.reactivex.Single;
 import io.vavr.Tuple2;
 import io.vavr.control.Try;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.core.AbstractVerticle;
 import lombok.Builder;
 import lombok.Data;
@@ -33,7 +30,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
 
-    static final String MY_TRANSFORM_STATE = "myTransformState";
     static final String MY_ERROR_STATE = "myErrorState";
 
     private KafkaStreams streams;
@@ -54,23 +50,20 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
 
         var builder = new StreamsBuilder();
 
-        StoreBuilder<KeyValueStore<String, String>> keyValueTransformStoreBuilder = Stores.keyValueStoreBuilder(
-                Stores.persistentKeyValueStore(MY_TRANSFORM_STATE), Serdes.String(), Serdes.String());
-        builder.addStateStore(keyValueTransformStoreBuilder);
-
         StoreBuilder<KeyValueStore<String, String>> keyValueErrorStoreBuilder = Stores
                 .keyValueStoreBuilder(Stores.persistentKeyValueStore(MY_ERROR_STATE), Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueErrorStoreBuilder);
 
         KStream<String, Tuple2<String, Try<InvResult>>>[] branches = builder
                 .<String, String>stream(KafkaProducerVerticle.TOPIC)
-                .transform(() -> new MyTransformerN(), MY_TRANSFORM_STATE)
                 .mapValues((k, v) -> new Tuple2<String, Try<InvResult>>(v,
                         Try.<InvResult>of(() -> invokeExternalApplication(k, v))))
                 .branch((k, t2) -> t2._2.isSuccess(), (k, t2) -> t2._2.isFailure());
 
         // success
-        branches[0].mapValues(t2 -> t2._2.get().getValue()).to("success");
+        branches[0].mapValues(t2 -> t2._2.get().getValue())
+                .peek((k, v) -> log.info("writing to success topic - {} : : {}", k, v)).to("success");
+
         // failure
         KStream<String, Tuple2<String, Try<InvResult>>>[] errorBranches = branches[1]
                 .branch((k, t2) -> t2._2.getCause() instanceof IllegalStateException, (k, t2) -> true);
@@ -78,8 +71,10 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
         errorBranches[0].process(new MyProcessorSupplier(), MY_ERROR_STATE);
         // process other exceptions
         errorBranches[1].foreach((k, v) -> {
-            if (true)
+            if (true) {
+                log.info("throw the doomed exception");
                 throw new IllegalStateException("doomed");
+            }
         });
 
         return builder;
@@ -88,14 +83,14 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     private InvResult invokeExternalApplication(String k, String v) {
         log.info("GOT KEY {} and VALUE {}", k, v);
         if (new Random().nextDouble() < 0.1) {
-            log.info("throw an very bad exception!!!");
+            log.info("*!*!*!*!*!* throw a very bad exception!!!");
             throw new RuntimeException("bad exc");
         }
         if (new Random().nextDouble() < 0.33) {
-            log.info("throw an OK exception!!!");
+            log.info("****** throw an OK exception!!!");
             throw new IllegalStateException("tr exc");
         }
-        log.info("returning result");
+        log.info("returning OK result");
         return InvResult.builder().key(k).value(v).build();
     }
 
@@ -122,41 +117,6 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
                 StreamsConfig.PROCESSING_GUARANTEE_CONFIG, "exactly_once")).buffer(2)
                 .collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1))).blockingGet();
     }
-}
-
-@Slf4j
-class MyTransformerN implements Transformer<String, String, KeyValue<String, String>> {
-
-    private KeyValueStore<String, String> store;
-    private Random random = new Random();
-
-    @Override
-    public void init(ProcessorContext context) {
-        this.store = (KeyValueStore<String, String>) context
-                .getStateStore(TransactionAndErrorHandlingInStreamsCheckVerticle.MY_TRANSFORM_STATE);
-    }
-
-    @Override
-    public KeyValue<String, String> transform(String key, String value) {
-        store.put(key, value);
-        var size = store.approximateNumEntries();
-        if (size % 10 == 0) {
-            var iterator = store.all();
-            while (iterator.hasNext()) {
-                store.delete(iterator.next().key);
-            }
-            return new KeyValue<String, String>("doomedk", new JsonObject().put("value", "doomedv").toString());
-
-        } else {
-            return new KeyValue<String, String>(key, new JsonObject(value).put("counter", "" + size).toString());
-        }
-    }
-
-    @Override
-    public void close() {
-
-    }
-
 }
 
 @Data

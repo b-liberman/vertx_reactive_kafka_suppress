@@ -28,11 +28,15 @@ public class AdminClientVerticle extends AbstractVerticle {
                         log.info("---- offsets for {}", groupId);
                         try {
                             adminClient.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get()
-                                    .entrySet().forEach(entry -> log.info("-------- {} : {}",
+                                    .entrySet().forEach(entry -> log.info("-------- {} : {} : {}", entry.getKey().topic(),
                                             entry.getKey().partition(), entry.getValue().offset()));
                         } catch (InterruptedException | ExecutionException e) {
                             e.printStackTrace();
                         }
+                    });
+                    // list topicss
+                    adminClient.listTopics().listings().get().stream().forEach(tl -> {
+                        log.info("---------------------- got topic {}", tl.name());
                     });
 
                     log.info("------------------------------------");
