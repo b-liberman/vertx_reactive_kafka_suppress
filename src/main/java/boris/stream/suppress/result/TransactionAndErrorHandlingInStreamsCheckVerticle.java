@@ -147,6 +147,7 @@ class MyProcessorSupplier implements ProcessorSupplier<String, Tuple2<String, Tr
             public void process(String key, Tuple2<String, Try<InvResult>> t2) {
                 context.headers().add("exception_header", t2._2.getCause().getMessage().getBytes());
                 log.info("storing entry in the error store - {} : {}", key, t2._1);
+                // to do: store the header. need serde for the store... or just JSON?
                 store.put(key, t2._1);
             }
 
