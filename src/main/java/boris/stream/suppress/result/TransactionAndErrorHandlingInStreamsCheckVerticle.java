@@ -37,13 +37,13 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-        Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
-            var builder = initializeBuilder();
-            streams = buildAndStartNewStreamsInstance(config, builder);
-            Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
-            log.info("consumer deployed");
-            startFuture.complete();
-        });
+        Single.fromCallable(() -> getStreamConfiguration())
+                .map(config -> new Tuple2<Properties, StreamsBuilder>(config, initializeBuilder()))
+                .map(t2 -> buildAndStartNewStreamsInstance(t2._1, t2._2)).subscribe(streams -> {
+                    Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+                    log.info("consumer deployed");
+                    startFuture.complete();
+                });
     }
 
     private StreamsBuilder initializeBuilder() {
@@ -145,7 +145,8 @@ class MyProcessorSupplier implements ProcessorSupplier<String, Tuple2<String, Tr
 
             @Override
             public void process(String key, Tuple2<String, Try<InvResult>> t2) {
-                // context.headers().add("exception_header", t2._2.getCause().getMessage().getBytes());
+                // context.headers().add("exception_header",
+                // t2._2.getCause().getMessage().getBytes());
                 log.info("storing entry in the error store - {} : {}", key, t2._1);
                 // to do: store the header. need serde for the store... or just JSON?
                 store.put(key, t2._1);
