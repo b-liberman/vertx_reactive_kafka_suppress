@@ -11,7 +11,8 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    vertx.rxDeployVerticle(TransactionAndErrorHandlingInStreamsCheckVerticle.class.getName())
+    //vertx.rxDeployVerticle(TransactionAndErrorHandlingInStreamsCheckVerticle.class.getName())
+    vertx.rxDeployVerticle(TransactionScopeProcess.class.getName())
         // .flatMap(wsvl -> vertx.rxDeployVerticle(KafkaStreamVerticle.class.getName()))
         // .flatMap(wsvl ->
         // vertx.rxDeployVerticle(RxJavaKafkaVertxPeriodical.class.getName()))
