@@ -9,16 +9,15 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.control.Try;
 import io.vertx.core.Future;
@@ -35,7 +34,7 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-        getStreamConfiguration().map(config -> new Tuple2<Properties, StreamsBuilder>(config, initializeBuilder()))
+        getStreamConfiguration().map(config -> Tuple.<Properties, StreamsBuilder>of(config, initializeBuilder()))
                 .map(t2 -> buildAndStartNewStreamsInstance(t2._1, t2._2)).subscribe(streams -> {
                     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
                     log.info("consumer deployed");
@@ -51,9 +50,8 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
                 Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueErrorStoreBuilder);
 
-        var branches = builder.<String, String>stream(KafkaProducerVerticle.TOPIC)
-                .mapValues((k, v) -> new Tuple2<String, Try<InvResult>>(v,
-                        Try.<InvResult>of(() -> invokeExternalApplication(k, v))))
+        var branches = builder.<String, String>stream(KafkaProducerVerticle.TOPIC).mapValues(
+                (k, v) -> Tuple.<String, Try<InvResult>>of(v, Try.<InvResult>of(() -> invokeExternalApplication(k, v))))
                 .branch((k, t2) -> t2._2.isSuccess(), (k, t2) -> t2._2.isFailure());
 
         // success

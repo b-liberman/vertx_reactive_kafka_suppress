@@ -11,7 +11,6 @@ import java.util.Random;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
-
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -23,7 +22,7 @@ import org.apache.kafka.streams.state.Stores;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.vavr.Tuple2;
+import io.vavr.Tuple;
 import io.vavr.control.Try;
 import io.vertx.core.Future;
 import io.vertx.reactivex.core.AbstractVerticle;
@@ -40,7 +39,7 @@ public class TransactionScopeProcess extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-        getStreamConfiguration().map(config -> new Tuple2<Properties, StreamsBuilder>(config, initializeBuilder()))
+        getStreamConfiguration().map(config -> Tuple.<Properties, StreamsBuilder>of(config, initializeBuilder()))
                 .map(t2 -> buildAndStartNewStreamsInstance(t2._1, t2._2)).subscribe(streams -> {
                     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
                     log.info("consumer deployed");
