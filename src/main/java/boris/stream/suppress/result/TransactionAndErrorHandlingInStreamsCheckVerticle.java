@@ -48,12 +48,11 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
 
         var builder = new StreamsBuilder();
 
-        StoreBuilder<KeyValueStore<String, String>> keyValueErrorStoreBuilder = Stores
-                .keyValueStoreBuilder(Stores.persistentKeyValueStore(MY_ERROR_STATE), Serdes.String(), Serdes.String());
+        var keyValueErrorStoreBuilder = Stores.keyValueStoreBuilder(Stores.persistentKeyValueStore(MY_ERROR_STATE),
+                Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueErrorStoreBuilder);
 
-        KStream<String, Tuple2<String, Try<InvResult>>>[] branches = builder
-                .<String, String>stream(KafkaProducerVerticle.TOPIC)
+        var branches = builder.<String, String>stream(KafkaProducerVerticle.TOPIC)
                 .mapValues((k, v) -> new Tuple2<String, Try<InvResult>>(v,
                         Try.<InvResult>of(() -> invokeExternalApplication(k, v))))
                 .branch((k, t2) -> t2._2.isSuccess(), (k, t2) -> t2._2.isFailure());
@@ -63,8 +62,8 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
                 .peek((k, v) -> log.info("writing to success topic - {} : : {}", k, v)).to("success");
 
         // failure
-        KStream<String, Tuple2<String, Try<InvResult>>>[] errorBranches = branches[1]
-                .branch((k, t2) -> t2._2.getCause() instanceof IllegalStateException, (k, t2) -> true);
+        var errorBranches = branches[1].branch((k, t2) -> t2._2.getCause() instanceof IllegalStateException,
+                (k, t2) -> true);
         // process illegal state exception
         errorBranches[0].process(new MyProcessorSupplier(), MY_ERROR_STATE);
         // process other exceptions
@@ -105,7 +104,7 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     }
 
     private Properties getStreamConfiguration() {
-
+vi
         return Flowable.fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "transaction-error-check",
                 StreamsConfig.CLIENT_ID_CONFIG, "t-e-checker1", StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
                 "localhost:9092", StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
@@ -147,7 +146,8 @@ class MyProcessorSupplier implements ProcessorSupplier<String, Tuple2<String, Tr
             }
 
             @Override
-            public void close() {}
+            public void close() {
+            }
         };
     }
 }

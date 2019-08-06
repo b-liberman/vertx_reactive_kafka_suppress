@@ -11,6 +11,7 @@ import java.util.Random;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
+
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -56,7 +57,13 @@ public class TransactionScopeProcess extends AbstractVerticle {
                 .keyValueStoreBuilder(Stores.persistentKeyValueStore(MY_ERROR_STATE), Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueErrorStoreBuilder);
 
-        builder.<String, String>stream(KafkaProducerVerticle.TOPIC).process(() -> new Processor<String, String>() {
+        builder.<String, String>stream(KafkaProducerVerticle.TOPIC).process(() -> buildProcessor(), MY_ERROR_STATE);
+
+        return builder;
+    }
+
+    private Processor<String, String> buildProcessor() {
+        return new Processor<String, String>() {
             private KeyValueStore<String, String> store;
             private boolean firstRecord = true;
 
@@ -93,12 +100,8 @@ public class TransactionScopeProcess extends AbstractVerticle {
                 firstRecord = false;
             }
 
-            public void close() {
-                // can access this.state
-            }
-        }, MY_ERROR_STATE);
-
-        return builder;
+            public void close() {}
+        };
     }
 
     private InvResultTS dealWithException(IllegalStateException t, String k, String v,
