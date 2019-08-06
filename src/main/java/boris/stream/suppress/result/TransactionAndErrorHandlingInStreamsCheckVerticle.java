@@ -65,10 +65,8 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
         errorBranches[0].process(new MyProcessorSupplier(), MY_ERROR_STATE);
         // process other exceptions
         errorBranches[1].foreach((k, v) -> {
-            if (true) {
-                log.info("throw the doomed exception");
-                throw new IllegalStateException("doomed");
-            }
+            log.info("throw the doomed exception");
+            throw new IllegalStateException("doomed");
         });
 
         return builder;
