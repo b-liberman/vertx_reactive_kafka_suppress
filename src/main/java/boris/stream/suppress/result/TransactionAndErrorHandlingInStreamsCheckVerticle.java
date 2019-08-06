@@ -104,7 +104,7 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
     }
 
     private Properties getStreamConfiguration() {
-vi
+        
         return Flowable.fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "transaction-error-check",
                 StreamsConfig.CLIENT_ID_CONFIG, "t-e-checker1", StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
                 "localhost:9092", StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
