@@ -40,8 +40,7 @@ public class TransactionScopeProcess extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-        Single.fromCallable(() -> getStreamConfiguration())
-                .map(config -> new Tuple2<Properties, StreamsBuilder>(config, initializeBuilder()))
+        getStreamConfiguration().map(config -> new Tuple2<Properties, StreamsBuilder>(config, initializeBuilder()))
                 .map(t2 -> buildAndStartNewStreamsInstance(t2._1, t2._2)).subscribe(streams -> {
                     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
                     log.info("consumer deployed");
@@ -100,7 +99,8 @@ public class TransactionScopeProcess extends AbstractVerticle {
                 firstRecord = false;
             }
 
-            public void close() {}
+            public void close() {
+            }
         };
     }
 
@@ -137,7 +137,7 @@ public class TransactionScopeProcess extends AbstractVerticle {
         return streams;
     }
 
-    private Properties getStreamConfiguration() {
+    private Single<Properties> getStreamConfiguration() {
 
         return Flowable.fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "transaction-error-check",
                 StreamsConfig.CLIENT_ID_CONFIG, "t-e-checker1", StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -146,7 +146,7 @@ public class TransactionScopeProcess extends AbstractVerticle {
                 ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest", StreamsConfig.STATE_DIR_CONFIG, "/tmp/kafka-streams",
                 StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10, StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L,
                 StreamsConfig.PROCESSING_GUARANTEE_CONFIG, "exactly_once")).buffer(2)
-                .collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1))).blockingGet();
+                .collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1)));
     }
 }
 

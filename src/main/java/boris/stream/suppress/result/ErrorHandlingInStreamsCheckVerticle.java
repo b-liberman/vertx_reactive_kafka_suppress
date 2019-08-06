@@ -33,7 +33,7 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-        Single.fromCallable(() -> getStreamConfiguration()).subscribe(config -> {
+        getStreamConfiguration().subscribe(config -> {
             var builder = initializeBuilder();
             streams = buildAndStartNewStreamsInstance(config, builder);
             Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
@@ -73,18 +73,15 @@ public class ErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
         return streams;
     }
 
-    private Properties getStreamConfiguration() {
+    private Single<Properties> getStreamConfiguration() {
 
-        return Flowable
-                .fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "error-check",
-                        StreamsConfig.CLIENT_ID_CONFIG, "error_check", StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-                        "localhost:9092", StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
-                        Serdes.String().getClass().getName(), StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
-                        Serdes.String().getClass().getName(), ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest",
-                        StreamsConfig.STATE_DIR_CONFIG, "/tmp/kafka-streams", StreamsConfig.COMMIT_INTERVAL_MS_CONFIG,
-                        10, StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L))
-                .buffer(2).collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1)))
-                .blockingGet();
+        return Flowable.fromIterable(List.of(StreamsConfig.APPLICATION_ID_CONFIG, "error-check",
+                StreamsConfig.CLIENT_ID_CONFIG, "error_check", StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
+                StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
+                StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName(),
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest", StreamsConfig.STATE_DIR_CONFIG, "/tmp/kafka-streams",
+                StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10, StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0L))
+                .buffer(2).collectInto(new Properties(), (props, entry) -> props.put(entry.get(0), entry.get(1)));
     }
 }
 
