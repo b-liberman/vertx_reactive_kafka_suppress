@@ -5,10 +5,14 @@ import java.util.Properties;
 import java.util.Random;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Transformer;
+import org.apache.kafka.streams.kstream.TransformerSupplier;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -29,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractVerticle {
 
+    static final String MY_ERROR_TOPIC = "myErrorTopic";
     static final String MY_ERROR_STATE = "myErrorState";
 
     @Override
@@ -62,7 +67,11 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
         var errorBranches = branches[1].branch((k, t2) -> t2._2.getCause() instanceof IllegalStateException,
                 (k, t2) -> true);
         // process illegal state exception
-        errorBranches[0].process(new MyProcessorSupplier(), MY_ERROR_STATE);
+        // errorBranches[0].process(new MyProcessorSupplier(), MY_ERROR_STATE);
+
+        errorBranches[0].<String, String>transform(new ErrorTransformerSupplier()).to(MY_ERROR_TOPIC);
+        builder.<String, String>stream(MY_ERROR_TOPIC).process(new ErrorProcessorSupplier());
+
         // process other exceptions
         errorBranches[1].foreach((k, v) -> {
             log.info("throw the doomed exception");
@@ -74,13 +83,13 @@ public class TransactionAndErrorHandlingInStreamsCheckVerticle extends AbstractV
 
     private InvResult invokeExternalApplication(String k, String v) {
         log.info("GOT KEY {} and VALUE {}", k, v);
-        if (new Random().nextDouble() < 0.1) {
+        if (new Random().nextDouble() < 0.0001) {
             log.info("*!*!*!*!*!* throw a very bad exception!!!");
             throw new RuntimeException("bad exc");
         }
         if (new Random().nextDouble() < 0.33) {
             log.info("****** throw an OK exception!!!");
-            throw new IllegalStateException("tr exc");
+            throw new IllegalStateException("tr exc " + System.currentTimeMillis());
         }
         log.info("returning OK result");
         return InvResult.builder().key(k).value(v).build();
@@ -138,6 +147,60 @@ class MyProcessorSupplier implements ProcessorSupplier<String, Tuple2<String, Tr
                 log.info("storing entry in the error store - {} : {}", key, t2._1);
                 // to do: store the header. need serde for the store... or just JSON?
                 store.put(key, t2._1);
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+    }
+}
+
+class ErrorTransformerSupplier
+        implements TransformerSupplier<String, Tuple2<String, Try<InvResult>>, KeyValue<String, String>> {
+
+    static final String EXCEPTION_CAUSE = "exception cause";
+
+    @Override
+    public Transformer get() {
+        return new Transformer<String, Tuple2<String, Try<InvResult>>, KeyValue<String, String>>() {
+
+            private ProcessorContext context;
+
+            public void init(ProcessorContext context) {
+                this.context = context;
+            }
+
+            public KeyValue<String, String> transform(String key, Tuple2<String, Try<InvResult>> value) {
+                context.headers().add(new RecordHeader(EXCEPTION_CAUSE, value._2.getCause().getMessage().getBytes()));
+                return new KeyValue(key, value._1);
+            }
+
+            public void close() {
+            }
+        };
+    }
+
+}
+
+@Slf4j
+class ErrorProcessorSupplier implements ProcessorSupplier<String, String> {
+
+    @Override
+    public Processor<String, String> get() {
+        return new Processor<String, String>() {
+
+            private ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+                this.context = context;
+            }
+
+            @Override
+            public void process(String key, String value) {
+                context.headers().headers(ErrorTransformerSupplier.EXCEPTION_CAUSE)
+                        .forEach(h -> log.info("got error event - {} : {} : {}", key, value, new String(h.value())));
             }
 
             @Override

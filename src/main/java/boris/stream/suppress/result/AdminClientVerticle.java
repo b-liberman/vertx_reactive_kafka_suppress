@@ -1,10 +1,12 @@
 package boris.stream.suppress.result;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 
 import io.reactivex.Single;
 import io.vertx.core.Future;
@@ -21,7 +23,8 @@ public class AdminClientVerticle extends AbstractVerticle {
 
         Single.fromCallable(() -> getAdminClientConfiguration()).subscribe(config -> {
             var adminClient = AdminClient.create(config);
-            vertx.setPeriodic(2000, pid -> {
+            adminClient.createTopics(List.<NewTopic>of(new NewTopic(TransactionAndErrorHandlingInStreamsCheckVerticle.MY_ERROR_TOPIC, 1, (short)1)));
+            /*vertx.setPeriodic(2000, pid -> {
                 try {
                     adminClient.listConsumerGroups().all().get().stream().forEach(cg -> {
                         groupId = cg.groupId();
@@ -43,7 +46,7 @@ public class AdminClientVerticle extends AbstractVerticle {
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
-            });
+            });*/
             log.info("admin client created");
             startFuture.complete();
         });
